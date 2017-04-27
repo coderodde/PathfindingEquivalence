@@ -5,16 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-
-
 public class Demo {
 
     private static final double ARC_LENGTH_FACTOR = 1.2;
     private static final double AREA_WIDTH = 1000.0;
     private static final double AREA_HEIGHT = 1000.0;
-    private static final int NODES = 10_000;
-    private static final int ARCS = 50_000;
-    
+    private static final int NODES = 50_000;
+    private static final int ARCS = 250_000;
+    private static final int WARMUP_ITERATIONS = 100;
     
     public static void main(String[] args) {
         long seed = System.currentTimeMillis();
@@ -25,6 +23,8 @@ public class Demo {
         HeuristicFunction heuristicFunction = 
                 new HeuristicFunction(coordinates);
         List<DirectedGraphNode> nodeList = graphData.nodeList;
+        
+        warmup(nodeList, weightFunction, heuristicFunction, random);
         
         DirectedGraphNode source = choose(nodeList, random);
         DirectedGraphNode target = choose(nodeList, random);
@@ -52,7 +52,72 @@ public class Demo {
         
         System.out.println("AStarPathfinder in " + (end - start) + " ms.");
         
-        System.out.println("Agreed: " + dijkstraPath.equals(astarPath));
+        DirectedGraphWeightFunction modifiedWeightFunction = 
+                modifyWeightFunction(nodeList,
+                                     weightFunction, 
+                                     heuristicFunction,
+                                     target);
+        
+        start = System.currentTimeMillis();
+        
+        List<DirectedGraphNode> dijkstra2Path = 
+                DijkstraPathfinder.search(source, 
+                                          target, 
+                                          modifiedWeightFunction);
+    
+        end = System.currentTimeMillis();
+        
+        System.out.println("DijkstraPathfinder with modified lengths in " + 
+                (end - start) + " ms.");
+        
+        
+        System.out.println("Agreed: " + 
+                (dijkstraPath.equals(astarPath) &&
+                        dijkstraPath.equals(dijkstra2Path)));
+    }
+    
+    static void warmup(List<DirectedGraphNode> nodeList,
+                       DirectedGraphWeightFunction weightFunction,
+                       HeuristicFunction heuristicFunction,
+                       Random random) {
+        System.out.println("Warming up...");
+        
+        for (int i = 0; i < WARMUP_ITERATIONS; ++i) {
+            DirectedGraphNode source = choose(nodeList, random);
+            DirectedGraphNode target = choose(nodeList, random);
+            
+            try {
+                DijkstraPathfinder.search(source, target, weightFunction);
+                AStarPathfinder.search(source, 
+                                       target, 
+                                       weightFunction, 
+                                       heuristicFunction);
+            } catch (IllegalStateException ex) {
+                
+            }
+        }
+        
+        System.out.println("Warming up done!");
+    }
+    
+    static DirectedGraphWeightFunction 
+        modifyWeightFunction(List<DirectedGraphNode> nodeList,
+                             DirectedGraphWeightFunction weightFunction,
+                             HeuristicFunction heuristicFunction,
+                             DirectedGraphNode target) {
+        DirectedGraphWeightFunction modifiedWeightFunction = 
+                new DirectedGraphWeightFunction();
+        
+        for (DirectedGraphNode node : nodeList) {
+            for (DirectedGraphNode child : node.getChildren()) {
+                double length = weightFunction.get(node, child);
+                length += heuristicFunction.getEstimate(child, target);
+                length -= heuristicFunction.getEstimate(node, target);
+                modifiedWeightFunction.put(node, child, length);
+            }
+        }
+        
+        return modifiedWeightFunction;
     }
     
     static GraphData getGraphData(Random random) {
