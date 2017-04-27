@@ -10,9 +10,9 @@ public class Demo {
     private static final double ARC_LENGTH_FACTOR = 1.2;
     private static final double AREA_WIDTH = 1000.0;
     private static final double AREA_HEIGHT = 1000.0;
-    private static final int NODES = 50_000;
-    private static final int ARCS = 250_000;
-    private static final int WARMUP_ITERATIONS = 100;
+    private static final int NODES = 100_000;
+    private static final int ARCS = 1_000_000;
+    private static final int WARMUP_ITERATIONS = 10;
     
     public static void main(String[] args) {
         long seed = System.currentTimeMillis();
@@ -75,18 +75,38 @@ public class Demo {
         List<DirectedGraphNode> bidirDijkstraPath = 
                 BidirectionalDijkstraPathfinder.search(source, 
                                           target, 
-                                          modifiedWeightFunction);
+                                          weightFunction);
     
         end = System.currentTimeMillis();
         
         System.out.println("BidirectionalDijkstraPathfinder in " + 
                 (end - start) + " ms.");
         
+        DirectedGraphWeightFunction modifiedWeightFunction2 =
+                modifyWeightFunction2(nodeList, 
+                                      weightFunction, 
+                                      heuristicFunction,
+                                      source, 
+                                      target);
+        
+        start = System.currentTimeMillis();
+        
+        List<DirectedGraphNode> bidirModifiedDijkstraPath = 
+                BidirectionalDijkstraPathfinder.search(source, 
+                                          target, 
+                                          modifiedWeightFunction2);
+    
+        end = System.currentTimeMillis();
+        
+        System.out.println(
+                "BidirectionalDijkstraPathfinder with modified lengths in " + 
+                (end - start) + " ms.");
         
         System.out.println("Agreed: " + 
                 (dijkstraPath.equals(astarPath) &&
                         dijkstraPath.equals(dijkstra2Path) &&
-                        bidirDijkstraPath.equals(astarPath)));
+                        bidirDijkstraPath.equals(astarPath) &&
+                        bidirModifiedDijkstraPath.equals(astarPath)));
     }
     
     static void warmup(List<DirectedGraphNode> nodeList,
@@ -136,6 +156,31 @@ public class Demo {
         return modifiedWeightFunction;
     }
     
+    static DirectedGraphWeightFunction
+            modifyWeightFunction2(List<DirectedGraphNode> nodeList,
+                                  DirectedGraphWeightFunction weightFunction,
+                                  HeuristicFunction heuristicFunction,
+                                  DirectedGraphNode source,
+                                  DirectedGraphNode target) {
+        DirectedGraphWeightFunction modifiedWeightFunction = 
+                new DirectedGraphWeightFunction();
+        
+        for (DirectedGraphNode node : nodeList) {
+            for (DirectedGraphNode child : node.getChildren()) {
+                double length = weightFunction.get(node, child);
+                length += 0.5 * 
+                        (heuristicFunction.getEstimate(child, target) -
+                         heuristicFunction.getEstimate(node, target));
+                length += 0.5 *
+                        (heuristicFunction.getEstimate(node, source) -
+                         heuristicFunction.getEstimate(child, source));
+                modifiedWeightFunction.put(node, child, length);
+            }
+        }
+        
+        return modifiedWeightFunction;
+    }
+        
     static GraphData getGraphData(Random random) {
         return getGraphData(ARC_LENGTH_FACTOR,
                             AREA_WIDTH,
