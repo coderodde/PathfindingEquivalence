@@ -12,7 +12,7 @@ public class Demo {
     private static final double AREA_HEIGHT = 1000.0;
     private static final int NODES = 100_000;
     private static final int ARCS = 1_000_000;
-    private static final int WARMUP_ITERATIONS = 10;
+    private static final int WARMUP_ITERATIONS = 25;
     
     public static void main(String[] args) {
         long seed = System.currentTimeMillis();
@@ -31,12 +31,15 @@ public class Demo {
         
         System.out.println("Seed = " + seed);
         
-        long start = System.currentTimeMillis();
+        long start;
+        long end;
+        
+        start = System.currentTimeMillis();
         
         List<DirectedGraphNode> dijkstraPath = 
                 DijkstraPathfinder.search(source, target, weightFunction);
     
-        long end = System.currentTimeMillis();
+        end = System.currentTimeMillis();
         
         System.out.println("DijkstraPathfinder in " + (end - start) + " ms.");
         
@@ -72,6 +75,21 @@ public class Demo {
         
         start = System.currentTimeMillis();
         
+        List<DirectedGraphNode> phbaPath = 
+                PHBAPathfinder.search(source, 
+                                          target, 
+                                          weightFunction,
+                                          heuristicFunction);
+    
+        end = System.currentTimeMillis();
+        
+        System.out.println("PHBAPathfinder in " + 
+                (end - start) + " ms.");
+        
+        
+        
+        start = System.currentTimeMillis();
+        
         List<DirectedGraphNode> bidirDijkstraPath = 
                 BidirectionalDijkstraPathfinder.search(source, 
                                           target, 
@@ -102,11 +120,16 @@ public class Demo {
                 "BidirectionalDijkstraPathfinder with modified lengths in " + 
                 (end - start) + " ms.");
         
+//        System.out.println("Agreed? " + 
+//                (bidirDijkstraPath.equals(bidirModifiedDijkstraPath) &&
+//                        bidirDijkstraPath.equals(phbaPath)));
+//        
         System.out.println("Agreed: " + 
                 (dijkstraPath.equals(astarPath) &&
                         dijkstraPath.equals(dijkstra2Path) &&
                         bidirDijkstraPath.equals(astarPath) &&
-                        bidirModifiedDijkstraPath.equals(astarPath)));
+                        bidirModifiedDijkstraPath.equals(astarPath) &&
+                        phbaPath.equals(dijkstra2Path)));
     }
     
     static void warmup(List<DirectedGraphNode> nodeList,
@@ -128,6 +151,10 @@ public class Demo {
                 BidirectionalDijkstraPathfinder.search(source,
                                                        target, 
                                                        weightFunction);
+                PHBAPathfinder.search(source, 
+                                      target, 
+                                      weightFunction, 
+                                      heuristicFunction);
             } catch (IllegalStateException ex) {
                 
             }
